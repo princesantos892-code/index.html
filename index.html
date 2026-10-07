@@ -1,464 +1,740 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>High Power Hydroelectric System</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Hydroelectric Power Generator — 3D</title>
 <style>
-    * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-        user-select: none;
-    }
-
-    body, html {
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background-color: #080d14;
-        color: #f0f6fc;
-    }
-
-    #scene-container {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-    }
-
-    .ui-container {
-        position: absolute;
-        top: 16px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 10;
-        width: calc(100% - 32px);
-        max-width: 320px;
-    }
-
-    .power-btn {
-        width: 100%;
-        padding: 14px 20px;
-        border: none;
-        border-radius: 10px;
-        font-size: 0.95rem;
-        font-weight: 700;
-        letter-spacing: 0.05em;
-        cursor: pointer;
-        color: #ffffff;
-        background: #22c55e;
-        box-shadow: 0 4px 16px rgba(34, 197, 94, 0.4);
-        transition: all 0.2s ease;
-    }
-
-    .power-btn.closed {
-        background: #ef4444;
-        box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
-    }
-
-    .power-btn:active {
-        transform: scale(0.97);
-    }
-
-    .instructions {
-        position: absolute;
-        bottom: 16px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(15, 23, 42, 0.85);
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 20px;
-        padding: 8px 16px;
-        font-size: 0.75rem;
-        color: #94a3b8;
-        pointer-events: none;
-        white-space: nowrap;
-    }
-
-    @media (max-width: 600px) {
-        .ui-container {
-            top: 12px;
-        }
-
-        .power-btn {
-            padding: 12px 16px;
-            font-size: 0.85rem;
-        }
-
-        .instructions {
-            bottom: 10px;
-            font-size: 0.65rem;
-            padding: 5px 10px;
-        }
-    }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #05070d; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    padding: 14px 16px 10px;
+    display: flex; flex-direction: column; gap: 10px;
+    z-index: 20; pointer-events: none;
+  }
+  .topbar .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; pointer-events: none; }
+  .brand {
+    color: #dfe7f5; font-size: 13px; letter-spacing: 0.14em;
+    text-transform: uppercase; font-weight: 600; opacity: 0.9;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .brand .dot { width: 8px; height: 8px; border-radius: 50%; background: #35e0ff; box-shadow: 0 0 12px #35e0ff; }
+  .brand .sub { font-size: 10px; letter-spacing: 0.22em; opacity: 0.55; font-weight: 500; }
+  .close-valve {
+    pointer-events: auto;
+    width: 100%;
+    padding: 16px 18px;
+    background: linear-gradient(180deg, #ff5a5f 0%, #e5373c 100%);
+    border: none; border-radius: 12px;
+    color: #fff; font-size: 17px; font-weight: 800; letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    box-shadow: 0 0 26px rgba(255, 70, 80, 0.55), 0 6px 18px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+    transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+  .close-valve:active { transform: scale(0.985); }
+  .close-valve.on {
+    background: linear-gradient(180deg, #2fe08a 0%, #16a35e 100%);
+    box-shadow: 0 0 26px rgba(45, 220, 140, 0.55), 0 6px 18px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+  }
+  .close-valve .sub { display: block; font-size: 10px; letter-spacing: 0.28em; opacity: 0.85; margin-top: 3px; font-weight: 600; }
+  .hint {
+    position: fixed; bottom: 18px; left: 0; right: 0;
+    display: flex; justify-content: center; z-index: 20; pointer-events: none;
+  }
+  .hint span {
+    color: #9fb0cc; font-size: 12px; letter-spacing: 0.04em;
+    background: rgba(12, 18, 30, 0.78);
+    border: 1px solid rgba(90, 130, 190, 0.22);
+    padding: 9px 16px; border-radius: 999px;
+    backdrop-filter: blur(8px);
+  }
+  .legend {
+    position: fixed; bottom: 58px; left: 14px;
+    z-index: 15; display: flex; flex-direction: column; gap: 6px;
+    background: rgba(8, 14, 26, 0.7);
+    border: 1px solid rgba(70, 120, 190, 0.2);
+    border-radius: 10px; padding: 10px 12px;
+    backdrop-filter: blur(8px);
+  }
+  .legend .item { display: flex; align-items: center; gap: 8px; color: #9fb0cc; font-size: 11px; letter-spacing: 0.04em; }
+  .legend .swatch { width: 10px; height: 10px; border-radius: 3px; }
+  @media (max-width: 560px) {
+    .brand .sub { display: none; }
+    .legend { display: none; }
+  }
 </style>
 </head>
 <body>
-
-<div id="scene-container"></div>
-
-<div class="ui-container">
-    <button id="powerBtn" class="power-btn">OPEN VALVE (MAX POWER)</button>
+<div id="app"></div>
+<div class="topbar">
+  <div class="row">
+    <div class="brand">
+      <span class="dot"></span>
+      <div>
+        Hydroelectric Power Generator
+        <div class="sub">MADE BY GROUP 2 - PRINCE 11 ALEXANDRITE</div>
+      </div>
+    </div>
+  </div>
+  <button id="valveBtn" class="close-valve">
+    <span class="btn-text">Close Valve</span>
+    <span class="sub">Water Flow: OPEN</span>
+  </button>
 </div>
-
-<div class="instructions">
-    Drag to rotate • Pinch/Scroll to zoom • Two-finger drag to pan
+<div class="legend">
+  <div class="item"><span class="swatch" style="background:#2c9bf0"></span>Water</div>
+  <div class="item"><span class="swatch" style="background:#c9ced6"></span>Turbine</div>
+  <div class="item"><span class="swatch" style="background:#2c6ef0"></span>Generator</div>
+  <div class="item"><span class="swatch" style="background:#ffd75e"></span>Electricity Output</div>
 </div>
-
+<div class="hint">
+  <span>Drag to rotate • Pinch/Scroll to zoom • Two-finger drag to pan — Group 2 (Prince 11 Alexandrite)</span>
+</div>
 <script type="importmap">
 {
-    "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
-    }
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
 }
 </script>
-
 <script type="module">
-import * as THREE from "three";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// Scene Setup
-const container = document.getElementById("scene-container");
+/* =========================================================
+   HYDROELECTRIC POWER GENERATOR — 3D SCENE
+   ========================================================= */
+const app = document.getElementById('app');
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x080d14);
-scene.fog = new THREE.FogExp2(0x080d14, 0.012);
-
-// Camera Setup
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-
-function adjustCameraPosition() {
-    if (window.innerWidth < 600) {
-        camera.position.set(24, 16, 24);
-    } else {
-        camera.position.set(16, 11, 18);
-    }
-}
-adjustCameraPosition();
-
-// Renderer Setup
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+scene.background = new THREE.Color(0x05070d);
+scene.fog = new THREE.Fog(0x05070d, 26, 70);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(9.5, 7.5, 13.5);
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.3;
-container.appendChild(renderer.domElement);
+renderer.toneMappingExposure = 1.05;
+app.appendChild(renderer.domElement);
 
-// Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.target.set(1, 1.5, 0);
-controls.maxPolarAngle = Math.PI / 2 - 0.01;
+controls.dampingFactor = 0.07;
 controls.minDistance = 6;
-controls.maxDistance = 45;
+controls.maxDistance = 34;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.target.set(0, 1.8, 0);
 
-// Scene Ambient & Directional Lighting
-scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+/* ---------- LIGHTS ---------- */
+const hemi = new THREE.HemisphereLight(0x9ec4ff, 0x0a1020, 0.65);
+scene.add(hemi);
+const key = new THREE.DirectionalLight(0xd6e5ff, 1.25);
+key.position.set(10, 15, 8);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -16;
+key.shadow.camera.right = 16;
+key.shadow.camera.top = 16;
+key.shadow.camera.bottom = -16;
+key.shadow.camera.near = 1;
+key.shadow.camera.far = 50;
+key.shadow.bias = -0.0004;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x4f7fff, 0.55);
+rim.position.set(-9, 6, -10);
+scene.add(rim);
+const fill = new THREE.DirectionalLight(0xfff0d0, 0.25);
+fill.position.set(2, 4, 12);
+scene.add(fill);
+const lampLight = new THREE.PointLight(0xffd27a, 0, 10, 2);
+lampLight.position.set(6.2, 3.35, 0.3);
+scene.add(lampLight);
+const waterGlow = new THREE.PointLight(0x3fb8ff, 1.0, 9, 2);
+waterGlow.position.set(-2.2, 2.6, 0.5);
+scene.add(waterGlow);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 2.2);
-dirLight.position.set(12, 22, 14);
-dirLight.castShadow = true;
-scene.add(dirLight);
+/* ---------- MATERIALS ---------- */
+const matConcrete     = new THREE.MeshStandardMaterial({ color: 0x4a4f57, roughness: 0.95, metalness: 0.03 });
+const matConcreteDark = new THREE.MeshStandardMaterial({ color: 0x2e323a, roughness: 0.96, metalness: 0.03 });
+const matConcreteMid  = new THREE.MeshStandardMaterial({ color: 0x3a3f47, roughness: 0.95, metalness: 0.03 });
+const matSlab         = new THREE.MeshStandardMaterial({ color: 0x241f1a, roughness: 0.9,  metalness: 0.05 });
+const matMetal        = new THREE.MeshStandardMaterial({ color: 0xc9ced6, roughness: 0.34, metalness: 0.85 });
+const matMetalDark    = new THREE.MeshStandardMaterial({ color: 0x7d8592, roughness: 0.5,  metalness: 0.7 });
+const matBlue         = new THREE.MeshStandardMaterial({ color: 0x2c6ef0, roughness: 0.35, metalness: 0.5, emissive: 0x0a2a7a, emissiveIntensity: 0.4 });
+const matWater        = new THREE.MeshStandardMaterial({ color: 0x2c9bf0, roughness: 0.15, metalness: 0.1, transparent: true, opacity: 0.88, emissive: 0x0a4a8a, emissiveIntensity: 0.5 });
+const matWaterDeep    = new THREE.MeshStandardMaterial({ color: 0x1668b8, roughness: 0.2,  metalness: 0.1, transparent: true, opacity: 0.9,  emissive: 0x083a6a, emissiveIntensity: 0.4 });
+const matGrass        = new THREE.MeshStandardMaterial({ color: 0x2f7a4a, roughness: 0.95, metalness: 0.0 });
+const matPlant        = new THREE.MeshStandardMaterial({ color: 0x2faa5c, roughness: 0.9,  metalness: 0.0 });
+const matPlantDark    = new THREE.MeshStandardMaterial({ color: 0x1e6e3c, roughness: 0.9,  metalness: 0.0 });
+const matBulb         = new THREE.MeshStandardMaterial({ color: 0xfff3c4, emissive: 0xffd27a, emissiveIntensity: 0, roughness: 0.2, metalness: 0.0, transparent: true, opacity: 0.95 });
+const matWireRed      = new THREE.MeshStandardMaterial({ color: 0xd83a2e, roughness: 0.6, metalness: 0.3 });
 
-// HIGH OUTPUT BULB LIGHT
-const bulbLight = new THREE.PointLight(0xfacc15, 0, 30);
-bulbLight.position.set(5.5, 4.2, 0);
-scene.add(bulbLight);
+/* ---------- FOUNDATION & GROUND ---------- */
+const baseGroup = new THREE.Group();
+scene.add(baseGroup);
 
-// Materials
-const matConcrete = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 });
-const matDarkMetal = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.3 });
-const matSteel = new THREE.MeshStandardMaterial({ color: 0xc0caf5, metalness: 0.95, roughness: 0.15 });
-const matBlade = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.8, roughness: 0.2 });
-const matGenerator = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6, roughness: 0.2 });
-const matPole = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
-const matGlass = new THREE.MeshPhysicalMaterial({
-    color: 0xffffff,
-    transmission: 0.9,
-    opacity: 1,
-    transparent: true,
-    roughness: 0.05
-});
-const matFilament = new THREE.MeshStandardMaterial({
-    color: 0x444444,
-    emissive: 0x000000,
-    emissiveIntensity: 0
-});
-const matHousingGlass = new THREE.MeshPhysicalMaterial({
-    color: 0x94a3b8,
-    transmission: 0.85,
-    opacity: 0.55,
-    transparent: true,
-    roughness: 0.1
-});
-const matWater = new THREE.MeshPhysicalMaterial({
-    color: 0x0284c7,
-    transmission: 0.85,
-    opacity: 0.9,
-    transparent: true,
-    roughness: 0.1,
-    ior: 1.333
-});
+const board = new THREE.Mesh(new THREE.BoxGeometry(16.5, 0.6, 11.5), matSlab);
+board.position.y = -0.3;
+board.receiveShadow = true;
+board.castShadow = true;
+baseGroup.add(board);
 
-// Ground Base & Grid
-const gridHelper = new THREE.GridHelper(32, 32, 0x38bdf8, 0x334155);
-gridHelper.position.y = -0.01;
-scene.add(gridHelper);
+const felt = new THREE.Mesh(new THREE.BoxGeometry(15.6, 0.22, 10.6), matGrass);
+felt.position.y = 0.11;
+felt.receiveShadow = true;
+baseGroup.add(felt);
 
-const ground = new THREE.Mesh(
-    new THREE.CylinderGeometry(15, 15, 0.4, 64),
-    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 })
+const grid = new THREE.GridHelper(60, 60, 0x3a6fb0, 0x1d3350);
+grid.position.y = 0.005;
+grid.material.transparent = true;
+grid.material.opacity = 0.45;
+scene.add(grid);
+
+const axisMat = new THREE.LineBasicMaterial({ color: 0x39a9ff, transparent: true, opacity: 0.6 });
+scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-30, 0.01, 0), new THREE.Vector3(30, 0.01, 0)]), axisMat));
+scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0.01, -30), new THREE.Vector3(0, 0.01, 30)]), axisMat));
+
+/* ---------- RESERVOIR TOWER ---------- */
+const reservoirGroup = new THREE.Group();
+reservoirGroup.position.set(-5.6, 0, 0);
+scene.add(reservoirGroup);
+
+const towerBody = new THREE.Mesh(new THREE.BoxGeometry(4.4, 3.4, 4.4), matConcreteDark);
+towerBody.position.set(0, 1.7, 0);
+towerBody.castShadow = true;
+towerBody.receiveShadow = true;
+reservoirGroup.add(towerBody);
+
+const towerRim = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.2, 4.6), matConcrete);
+towerRim.position.set(0, 3.5, 0);
+towerRim.castShadow = true;
+towerRim.receiveShadow = true;
+reservoirGroup.add(towerRim);
+
+const tankBody = new THREE.Mesh(
+  new THREE.BoxGeometry(3.6, 2.2, 3.6),
+  new THREE.MeshStandardMaterial({
+    color: 0x9fd4ff, roughness: 0.08, metalness: 0.0,
+    transparent: true, opacity: 0.35,
+    emissive: 0x2c8ad0, emissiveIntensity: 0.15
+  })
 );
-ground.position.y = -0.21;
-ground.receiveShadow = true;
-scene.add(ground);
+tankBody.position.set(0, 4.65, 0);
+reservoirGroup.add(tankBody);
 
-// 1. DAM & RESERVOIR
-const damWall = new THREE.Mesh(new THREE.BoxGeometry(3.5, 5.5, 5), matConcrete);
-damWall.position.set(-5, 2.75, 0);
-damWall.castShadow = true;
-scene.add(damWall);
+const tankWater = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.85, 3.4), matWater);
+tankWater.position.set(0, 4.45, 0);
+reservoirGroup.add(tankWater);
 
-const resWater = new THREE.Mesh(new THREE.BoxGeometry(3.4, 4.8, 4.8), matWater);
-resWater.position.set(-5, 2.5, 0);
-scene.add(resWater);
+const tankTop = new THREE.Mesh(
+  new THREE.BoxGeometry(3.7, 0.08, 3.7),
+  new THREE.MeshStandardMaterial({ color: 0xbfe6ff, roughness: 0.05, metalness: 0.1, transparent: true, opacity: 0.6 })
+);
+tankTop.position.set(0, 5.72, 0);
+reservoirGroup.add(tankTop);
 
-// 2. PIPING SYSTEM
-const pipeMain = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 3.2, 32, 1, true), matDarkMetal);
-pipeMain.rotation.z = -Math.PI / 4;
-pipeMain.position.set(-2.2, 2.4, 0);
-scene.add(pipeMain);
+const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.6, 16), matWater);
+nozzle.rotation.z = Math.PI / 2;
+nozzle.position.set(2.0, 4.1, 0);
+reservoirGroup.add(nozzle);
 
-const pipeBranch1 = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.8, 24, 1, true), matDarkMetal);
-pipeBranch1.rotation.x = Math.PI / 6;
-pipeBranch1.position.set(-0.8, 1.2, -1.1);
-scene.add(pipeBranch1);
+const slotFloor = new THREE.Mesh(new THREE.BoxGeometry(2.3, 0.4, 2.6), matConcreteMid);
+slotFloor.position.set(-1.45, 0.32, 0.1);
+slotFloor.castShadow = true;
+slotFloor.receiveShadow = true;
+scene.add(slotFloor);
 
-const pipeBranch2 = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.8, 24, 1, true), matDarkMetal);
-pipeBranch2.rotation.x = -Math.PI / 6;
-pipeBranch2.position.set(-0.8, 1.2, 1.1);
-scene.add(pipeBranch2);
+/* ---------- MAIN TURBINE ---------- */
+const mainTurbineGroup = new THREE.Group();
+mainTurbineGroup.position.set(-1.45, 1.85, 0);
+scene.add(mainTurbineGroup);
 
-// 3. DUAL TURBINES
-function createTurbineUnit(x, z) {
-    const group = new THREE.Group();
+const mainHub = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.7, 24), matMetalDark);
+mainHub.rotation.x = Math.PI / 2;
+mainHub.castShadow = true;
+mainTurbineGroup.add(mainHub);
 
-    const housing = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.9, 32), matHousingGlass);
-    housing.position.set(x, 0.5, z);
-    group.add(housing);
+const mainBlades = new THREE.Group();
+mainTurbineGroup.add(mainBlades);
+const bladeCount = 10;
+for (let i = 0; i < bladeCount; i++) {
+  const angle = (i / bladeCount) * Math.PI * 2;
+  const spoke = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.16, 0.24), matMetal);
+  spoke.position.set(Math.cos(angle) * 0.78, Math.sin(angle) * 0.78, 0);
+  spoke.rotation.z = angle;
+  spoke.castShadow = true;
+  mainBlades.add(spoke);
 
-    const runner = new THREE.Group();
-    runner.position.set(x, 0.5, z);
-
-    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.7, 24), matSteel);
-    runner.add(hub);
-
-    for (let i = 0; i < 10; i++) {
-        const angle = (i / 10) * Math.PI * 2;
-        const bucketGroup = new THREE.Group();
-
-        const bucketCup = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16, 0, Math.PI), matBlade);
-        bucketCup.rotation.x = Math.PI / 2;
-        bucketCup.position.set(0.6, 0, 0);
-        bucketGroup.add(bucketCup);
-
-        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.35), matSteel);
-        stem.rotation.z = Math.PI / 2;
-        stem.position.set(0.38, 0, 0);
-        bucketGroup.add(stem);
-
-        bucketGroup.rotation.y = angle;
-        runner.add(bucketGroup);
-    }
-    group.add(runner);
-
-    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.4, 16), matSteel);
-    shaft.position.set(x, 1.5, z);
-    group.add(shaft);
-
-    const gen = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 1.1, 32), matGenerator);
-    gen.position.set(x, 2.7, z);
-    group.add(gen);
-
-    scene.add(group);
-    return { runner, shaft };
+  const tip = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.62), matMetal);
+  tip.position.set(Math.cos(angle) * 1.55, Math.sin(angle) * 1.55, 0);
+  tip.rotation.z = angle + Math.PI * 0.13;
+  tip.castShadow = true;
+  mainBlades.add(tip);
 }
 
-const turbine1 = createTurbineUnit(0.3, -1.8);
-const turbine2 = createTurbineUnit(0.3, 1.8);
+const mainRing = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.075, 12, 44), matMetalDark);
+mainRing.castShadow = true;
+mainTurbineGroup.add(mainRing);
 
-// 4. CLEARLY VISIBLE LIGHT POLE AND GIANT BULB
-const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 4.5, 16), matPole);
-pole.position.set(5.5, 2.25, 0);
-pole.castShadow = true;
-scene.add(pole);
+const labelMain = makeLabel('Main Turbine', 0x1a2233, 0xdfe7f5);
+labelMain.position.set(-1.45, 1.05, 1.4);
+scene.add(labelMain);
 
-const bulbGroup = new THREE.Group();
-bulbGroup.position.set(5.5, 4.2, 0);
+/* ---------- WATER POOL ---------- */
+const poolGroup = new THREE.Group();
+poolGroup.position.set(-0.3, 0, 0.9);
+scene.add(poolGroup);
 
-const bulbBase = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.4, 16), matSteel);
-bulbBase.position.y = 0.5;
-bulbGroup.add(bulbBase);
+const poolInner = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.55, 2.4), matWaterDeep);
+poolInner.position.set(0, 0.45, 0);
+poolGroup.add(poolInner);
 
-const bulbGlass = new THREE.Mesh(new THREE.SphereGeometry(0.65, 32, 32), matGlass);
-bulbGlass.position.y = 0.1;
-bulbGroup.add(bulbGlass);
+const poolRimL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.75, 2.6), matConcreteDark);
+poolRimL.position.set(-1.35, 0.55, 0);
+poolRimL.castShadow = true;
+poolGroup.add(poolRimL);
 
-const bulbFilament = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), matFilament);
-bulbFilament.position.y = 0.1;
-bulbGroup.add(bulbFilament);
+const poolRimR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.75, 2.6), matConcreteDark);
+poolRimR.position.set(1.35, 0.55, 0);
+poolRimR.castShadow = true;
+poolGroup.add(poolRimR);
 
-scene.add(bulbGroup);
+const poolRimF = new THREE.Mesh(new THREE.BoxGeometry(2.85, 0.75, 0.15), matConcreteDark);
+poolRimF.position.set(0, 0.55, 1.3);
+poolRimF.castShadow = true;
+poolGroup.add(poolRimF);
 
-// 5. OVERHEAD POWER WIRES
-const wireCurve1 = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0.3, 3.2, -1.8),
-    new THREE.Vector3(2.8, 3.8, -0.8),
-    new THREE.Vector3(5.5, 4.7, 0)
-]);
-const wireGeo1 = new THREE.TubeGeometry(wireCurve1, 20, 0.03, 8, false);
-scene.add(new THREE.Mesh(wireGeo1, matDarkMetal));
+const poolRimB = new THREE.Mesh(new THREE.BoxGeometry(2.85, 0.75, 0.15), matConcreteDark);
+poolRimB.position.set(0, 0.55, -1.3);
+poolRimB.castShadow = true;
+poolGroup.add(poolRimB);
 
-const wireCurve2 = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(0.3, 3.2, 1.8),
-    new THREE.Vector3(2.8, 3.8, 0.8),
-    new THREE.Vector3(5.5, 4.7, 0)
-]);
-const wireGeo2 = new THREE.TubeGeometry(wireCurve2, 20, 0.03, 8, false);
-scene.add(new THREE.Mesh(wireGeo2, matDarkMetal));
+/* ---------- RIGHT RAISED BLOCK ---------- */
+const rightBlockGroup = new THREE.Group();
+scene.add(rightBlockGroup);
 
-// Water Particles
-const waterParticleCount = 60;
-const waterGeo = new THREE.SphereGeometry(0.08, 8, 8);
-const waterMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.9 });
+const rightBlock = new THREE.Mesh(new THREE.BoxGeometry(5.6, 2.9, 3.6), matConcreteDark);
+rightBlock.position.set(2.6, 1.45, 0);
+rightBlock.castShadow = true;
+rightBlock.receiveShadow = true;
+rightBlockGroup.add(rightBlock);
 
-function createParticleSet(startPos, endPos) {
-    const list = [];
-    for (let i = 0; i < waterParticleCount; i++) {
-        const p = new THREE.Mesh(waterGeo, waterMat);
-        p.visible = false;
-        scene.add(p);
-        list.push({ mesh: p, progress: Math.random(), start: startPos, end: endPos });
-    }
-    return list;
+const rightSlab = new THREE.Mesh(new THREE.BoxGeometry(5.8, 0.2, 3.8), matConcrete);
+rightSlab.position.set(2.6, 2.95, 0);
+rightSlab.castShadow = true;
+rightSlab.receiveShadow = true;
+rightBlockGroup.add(rightSlab);
+
+/* ---------- SECONDARY TURBINE ---------- */
+const secGroup = new THREE.Group();
+secGroup.position.set(1.4, 3.55, 0);
+scene.add(secGroup);
+
+const secBase = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.35, 1.0), matConcreteMid);
+secBase.position.set(1.4, 3.18, 0);
+secBase.castShadow = true;
+secBase.receiveShadow = true;
+scene.add(secBase);
+
+const secHub = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.4, 20), matMetalDark);
+secHub.rotation.x = Math.PI / 2;
+secHub.castShadow = true;
+secGroup.add(secHub);
+
+const secBlades = new THREE.Group();
+secGroup.add(secBlades);
+const secBladeCount = 9;
+for (let i = 0; i < secBladeCount; i++) {
+  const angle = (i / secBladeCount) * Math.PI * 2;
+  const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.16), matMetal);
+  spoke.position.set(Math.cos(angle) * 0.45, Math.sin(angle) * 0.45, 0);
+  spoke.rotation.z = angle;
+  spoke.castShadow = true;
+  secBlades.add(spoke);
+
+  const tip = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.1, 0.42), matMetal);
+  tip.position.set(Math.cos(angle) * 0.9, Math.sin(angle) * 0.9, 0);
+  tip.rotation.z = angle + Math.PI * 0.15;
+  tip.castShadow = true;
+  secBlades.add(tip);
 }
 
-const particles1 = createParticleSet(new THREE.Vector3(-3.2, 3.4, 0), new THREE.Vector3(0.3, 0.5, -1.8));
-const particles2 = createParticleSet(new THREE.Vector3(-3.2, 3.4, 0), new THREE.Vector3(0.3, 0.5, 1.8));
+const secRing = new THREE.Mesh(new THREE.TorusGeometry(0.65, 0.05, 10, 32), matMetalDark);
+secRing.castShadow = true;
+secGroup.add(secRing);
 
-// Electricity Particles along Wire
-const elecParticleCount = 15;
-const elecGeo = new THREE.SphereGeometry(0.06, 8, 8);
-const elecMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+const labelSec = makeLabel('Secondary\nTurbine', 0x1a2233, 0xdfe7f5);
+labelSec.position.set(1.4, 4.6, 0.01);
+scene.add(labelSec);
 
-function createElecParticles(curve) {
-    const list = [];
-    for (let i = 0; i < elecParticleCount; i++) {
-        const p = new THREE.Mesh(elecGeo, elecMat);
-        p.visible = false;
-        scene.add(p);
-        list.push({ mesh: p, progress: Math.random(), curve });
-    }
-    return list;
+/* ---------- GENERATOR ---------- */
+const genGroup = new THREE.Group();
+genGroup.position.set(3.9, 3.55, 0);
+scene.add(genGroup);
+
+const genBase = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.35, 1.2), matConcreteMid);
+genBase.position.set(3.9, 3.18, 0);
+genBase.castShadow = true;
+genBase.receiveShadow = true;
+scene.add(genBase);
+
+const genBody = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 1.6, 28), matBlue);
+genBody.rotation.z = Math.PI / 2;
+genBody.castShadow = true;
+genGroup.add(genBody);
+
+const genCapL = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.58, 0.12, 28), matMetalDark);
+genCapL.rotation.z = Math.PI / 2;
+genCapL.position.x = -0.85;
+genCapL.castShadow = true;
+genGroup.add(genCapL);
+
+const genCapR = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.58, 0.12, 28), matMetalDark);
+genCapR.rotation.z = Math.PI / 2;
+genCapR.position.x = 0.85;
+genCapR.castShadow = true;
+genGroup.add(genCapR);
+
+const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.35, 12), matMetal);
+shaft.rotation.z = Math.PI / 2;
+shaft.position.set(2.65, 3.55, 0);
+shaft.castShadow = true;
+scene.add(shaft);
+
+const labelGen = makeLabel('Generator', 0x1a2233, 0xdfe7f5);
+labelGen.position.set(3.9, 4.85, 0.01);
+scene.add(labelGen);
+
+/* ---------- LAMP POLE ---------- */
+const poleGroup = new THREE.Group();
+poleGroup.position.set(6.2, 0, 0.3);
+scene.add(poleGroup);
+
+const lampBase = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.75, 1.1), matConcreteDark);
+lampBase.position.y = 0.62;
+lampBase.castShadow = true;
+lampBase.receiveShadow = true;
+poleGroup.add(lampBase);
+
+const socket = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.3, 16), matMetalDark);
+socket.position.y = 1.14;
+socket.castShadow = true;
+poleGroup.add(socket);
+
+const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 20), matBulb);
+bulb.position.y = 1.6;
+bulb.castShadow = true;
+poleGroup.add(bulb);
+
+const glowCanvas = document.createElement('canvas');
+glowCanvas.width = glowCanvas.height = 128;
+const gctx = glowCanvas.getContext('2d');
+const grad = gctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+grad.addColorStop(0, 'rgba(255, 220, 130, 0.95)');
+grad.addColorStop(0.4, 'rgba(255, 190, 80, 0.35)');
+grad.addColorStop(1, 'rgba(255, 170, 60, 0)');
+gctx.fillStyle = grad;
+gctx.fillRect(0, 0, 128, 128);
+const glowTex = new THREE.CanvasTexture(glowCanvas);
+const glowSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+glowSprite.scale.set(2.4, 2.4, 1);
+glowSprite.position.y = 1.6;
+glowSprite.material.opacity = 0;
+poleGroup.add(glowSprite);
+
+const wirePathPts = [
+  new THREE.Vector3(4.75, 3.55, 0),
+  new THREE.Vector3(5.4, 3.25, 0.15),
+  new THREE.Vector3(6.1, 2.0, 0.25),
+  new THREE.Vector3(6.2, 1.2, 0.3),
+];
+const wireCurve = new THREE.CatmullRomCurve3(wirePathPts);
+const wireGeo = new THREE.TubeGeometry(wireCurve, 30, 0.045, 8, false);
+const wire = new THREE.Mesh(wireGeo, matWireRed);
+scene.add(wire);
+
+const labelOut = makeLabel('Electricity\nOutput', 0x2a1a1a, 0xffe0a0);
+labelOut.position.set(6.2, 2.85, 0.85);
+scene.add(labelOut);
+
+/* ---------- WATER FLOW & PARTICLES ---------- */
+const waterGroup = new THREE.Group();
+scene.add(waterGroup);
+
+const mainStreamGeo = new THREE.BufferGeometry();
+const mainStreamCount = 200;
+const mainPositions = new Float32Array(mainStreamCount * 3);
+const mainData = [];
+for (let i = 0; i < mainStreamCount; i++) {
+  mainData.push({
+    t: Math.random(),
+    speed: 0.9 + Math.random() * 0.6,
+    offsetX: (Math.random() - 0.5) * 0.35,
+    offsetZ: (Math.random() - 0.5) * 0.35,
+  });
+}
+mainStreamGeo.setAttribute('position', new THREE.BufferAttribute(mainPositions, 3));
+const mainStreamMat = new THREE.PointsMaterial({
+  color: 0x8fe0ff, size: 0.1, transparent: true, opacity: 0.92,
+  depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true
+});
+const mainStream = new THREE.Points(mainStreamGeo, mainStreamMat);
+waterGroup.add(mainStream);
+
+const splashGeo = new THREE.BufferGeometry();
+const splashCount = 180;
+const splashPositions = new Float32Array(splashCount * 3);
+const splashData = [];
+for (let i = 0; i < splashCount; i++) {
+  splashData.push({
+    life: Math.random(),
+    vx: (Math.random() - 0.5) * 2.0,
+    vy: 1.0 + Math.random() * 1.8,
+    vz: (Math.random() - 0.5) * 1.8,
+    x: -1.45 + (Math.random() - 0.5) * 0.5,
+    y: 0.9,
+    z: (Math.random() - 0.5) * 0.5,
+  });
+}
+splashGeo.setAttribute('position', new THREE.BufferAttribute(splashPositions, 3));
+const splashMat = new THREE.PointsMaterial({
+  color: 0xbfeaff, size: 0.09, transparent: true, opacity: 0.9,
+  depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true
+});
+const splash = new THREE.Points(splashGeo, splashMat);
+waterGroup.add(splash);
+
+const secStreamGeo = new THREE.BufferGeometry();
+const secStreamCount = 120;
+const secPositions = new Float32Array(secStreamCount * 3);
+const secData = [];
+for (let i = 0; i < secStreamCount; i++) {
+  secData.push({
+    t: Math.random(),
+    speed: 1.0 + Math.random() * 0.5,
+    ox: (Math.random() - 0.5) * 0.4,
+    oz: (Math.random() - 0.5) * 0.4,
+  });
+}
+secStreamGeo.setAttribute('position', new THREE.BufferAttribute(secPositions, 3));
+const secStreamMat = new THREE.PointsMaterial({
+  color: 0x8fe0ff, size: 0.085, transparent: true, opacity: 0.85,
+  depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true
+});
+const secStream = new THREE.Points(secStreamGeo, secStreamMat);
+waterGroup.add(secStream);
+
+/* ---------- PLANTS ---------- */
+function makePlant(x, z, scale) {
+  const g = new THREE.Group();
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.55, 6), matPlant);
+  stem.position.y = 0.27;
+  g.add(stem);
+  for (let i = 0; i < 6; i++) {
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.5, 5), matPlant);
+    const a = (i / 6) * Math.PI * 2;
+    leaf.position.set(Math.cos(a) * 0.15, 0.5, Math.sin(a) * 0.15);
+    leaf.rotation.z = Math.cos(a) * 0.5;
+    leaf.rotation.x = Math.sin(a) * 0.5;
+    g.add(leaf);
+  }
+  for (let i = 0; i < 4; i++) {
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.35, 4), matPlantDark);
+    const a = (i / 4) * Math.PI * 2 + 0.3;
+    leaf.position.set(Math.cos(a) * 0.08, 0.3, Math.sin(a) * 0.08);
+    leaf.rotation.z = Math.cos(a) * 0.6;
+    g.add(leaf);
+  }
+  g.position.set(x, 0.25, z);
+  g.scale.setScalar(scale);
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return g;
 }
 
-const elecList1 = createElecParticles(wireCurve1);
-const elecList2 = createElecParticles(wireCurve2);
+const plantPositions = [
+  [-6.2, 3.6, 1.1], [-5.4, 3.9, 1.0], [-4.5, 3.7, 0.95],
+  [-6.6, 2.6, 1.0], [-6.0, 4.4, 0.9],
+  [1.8, 3.4, 0.95], [2.7, 3.6, 1.0], [3.6, 3.4, 0.9], [4.5, 3.6, 0.95],
+  [2.2, 4.2, 0.85], [5.0, 3.9, 0.9],
+];
+plantPositions.forEach(([x, z, s]) => scene.add(makePlant(x, z, s)));
 
-// State Management
-let isOpen = false;
-let currentFlow = 0;
+const patchMat = new THREE.MeshStandardMaterial({ color: 0x3a9a5e, roughness: 0.95 });
+for (let i = 0; i < 30; i++) {
+  const x = (Math.random() - 0.5) * 14;
+  const z = (Math.random() - 0.5) * 9;
+  if (Math.abs(x) > 6.8 || Math.abs(z) > 4.6) continue;
+  if (x > -4 && x < 5 && Math.abs(z) < 2.5) continue;
+  const clump = new THREE.Mesh(new THREE.SphereGeometry(0.16 + Math.random() * 0.1, 6, 5), patchMat);
+  clump.position.set(x, 0.25, z);
+  clump.scale.y = 0.4;
+  clump.castShadow = true;
+  scene.add(clump);
+}
 
-const powerBtn = document.getElementById("powerBtn");
+/* ---------- LABEL HELPER ---------- */
+function makeLabel(text, bgColor, textColor) {
+  const canvas = document.createElement('canvas');
+  const W = 512, H = 256;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#' + bgColor.toString(16).padStart(6, '0');
+  roundRect(ctx, 8, 8, W - 16, H - 16, 16);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 3;
+  roundRect(ctx, 8, 8, W - 16, H - 16, 16);
+  ctx.stroke();
+  ctx.fillStyle = '#' + textColor.toString(16).padStart(6, '0');
+  ctx.font = 'bold 46px -apple-system, Segoe UI, Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const lines = text.split('\n');
+  const lineHeight = 54;
+  const startY = H / 2 - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((line, i) => ctx.fillText(line, W / 2, startY + i * lineHeight));
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.anisotropy = 8;
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+  return new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.0), mat);
+}
 
-powerBtn.addEventListener("click", () => {
-    isOpen = !isOpen;
-    if (isOpen) {
-        powerBtn.textContent = "CLOSE VALVE";
-        powerBtn.classList.add("closed");
-    } else {
-        powerBtn.textContent = "OPEN VALVE (MAX POWER)";
-        powerBtn.classList.remove("closed");
-    }
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/* ---------- STATE & ANIMATION ---------- */
+const state = {
+  valveOpen: true,
+  flow: 1.0,
+  wheelSpeed: 1.0,
+};
+
+const valveBtn = document.getElementById('valveBtn');
+const btnText = valveBtn.querySelector('.btn-text');
+const btnSub = valveBtn.querySelector('.sub');
+
+valveBtn.addEventListener('click', () => {
+  state.valveOpen = !state.valveOpen;
+  if (state.valveOpen) {
+    valveBtn.classList.remove('on');
+    btnText.textContent = 'Close Valve';
+    btnSub.textContent = 'Water Flow: OPEN';
+  } else {
+    valveBtn.classList.add('on');
+    btnText.textContent = 'Open Valve';
+    btnSub.textContent = 'Water Flow: CLOSED';
+  }
 });
 
-// Animation Loop
 const clock = new THREE.Clock();
-
 function animate() {
-    requestAnimationFrame(animate);
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const targetFlow = state.valveOpen ? 1.0 : 0.0;
+  state.flow += (targetFlow - state.flow) * Math.min(dt * 3.5, 1);
+  state.wheelSpeed = state.flow;
 
-    const delta = clock.getDelta();
-    const targetFlow = isOpen ? 1 : 0;
-    currentFlow += (targetFlow - currentFlow) * delta * 2.8;
+  mainBlades.rotation.z -= dt * 3.2 * state.wheelSpeed;
+  secBlades.rotation.z -= dt * 3.6 * state.wheelSpeed;
 
-    const rotationSpeed = currentFlow * 25;
+  genBody.material.emissiveIntensity = 0.3 + state.wheelSpeed * 0.7;
+  lampLight.intensity = state.wheelSpeed * 3.0;
+  bulb.material.emissiveIntensity = state.wheelSpeed * 2.4;
+  glowSprite.material.opacity = state.wheelSpeed * 0.95;
+  waterGlow.intensity = 0.6 + state.wheelSpeed * 1.0;
 
-    turbine1.runner.rotation.y += rotationSpeed * delta;
-    turbine1.shaft.rotation.y += rotationSpeed * delta;
+  const mp = mainStream.geometry.attributes.position.array;
+  const mStartX = -1.55, mEndX = -1.45;
+  const mStartY = 1.9, mEndY = 1.4;
+  for (let i = 0; i < mainStreamCount; i++) {
+    const d = mainData[i];
+    d.t += dt * d.speed * (0.4 + state.flow * 1.4);
+    if (d.t > 1) d.t -= 1;
+    const t = d.t;
+    const x = mStartX + (mEndX - mStartX) * t + d.offsetX * (1 - t * 0.3);
+    const y = mStartY + (mEndY - mStartY) * t - t * t * 0.4;
+    const z = d.offsetZ;
+    mp[i*3] = x; mp[i*3+1] = y; mp[i*3+2] = z;
+  }
+  mainStream.geometry.attributes.position.needsUpdate = true;
+  mainStreamMat.opacity = 0.15 + state.flow * 0.82;
 
-    turbine2.runner.rotation.y += rotationSpeed * delta;
-    turbine2.shaft.rotation.y += rotationSpeed * delta;
+  const sp = secStream.geometry.attributes.position.array;
+  const sStartX = 1.4, sEndX = -0.2;
+  const sStartY = 3.35, sEndY = 0.9;
+  for (let i = 0; i < secStreamCount; i++) {
+    const d = secData[i];
+    d.t += dt * d.speed * (0.4 + state.flow * 1.4);
+    if (d.t > 1) d.t -= 1;
+    const t = d.t;
+    const x = sStartX + (sEndX - sStartX) * t + d.ox;
+    const y = sStartY + (sEndY - sStartY) * t - t * t * 0.8;
+    const z = d.oz;
+    sp[i*3] = x; sp[i*3+1] = y; sp[i*3+2] = z;
+  }
+  secStream.geometry.attributes.position.needsUpdate = true;
+  secStreamMat.opacity = 0.1 + state.flow * 0.78;
 
-    const updateParticles = (particleList) => {
-        particleList.forEach(p => {
-            if (currentFlow > 0.05) {
-                p.mesh.visible = true;
-                p.progress += delta * currentFlow * 2.0;
-                if (p.progress > 1) p.progress = 0;
+  const splashPos = splash.geometry.attributes.position.array;
+  for (let i = 0; i < splashCount; i++) {
+    const s = splashData[i];
+    if (state.flow > 0.05) {
+      s.life += dt * 1.6;
+      if (s.life > 1) {
+        s.life = 0;
+        s.x = -1.45 + (Math.random() - 0.5) * 0.5;
+        s.y = 0.9;
+        s.z = (Math.random() - 0.5) * 0.5;
+        s.vx = (Math.random() - 0.5) * 2.0;
+        s.vy = 1.0 + Math.random() * 1.8;
+        s.vz = (Math.random() - 0.5) * 1.8;
+      }
+      s.x += s.vx * dt;
+      s.y += s.vy * dt;
+      s.z += s.vz * dt;
+      s.vy -= 3.2 * dt;
+    }
+    splashPos[i*3] = s.x;
+    splashPos[i*3+1] = Math.max(0.3, s.y);
+    splashPos[i*3+2] = s.z;
+  }
+  splash.geometry.attributes.position.needsUpdate = true;
+  splashMat.opacity = state.flow * 0.9;
 
-                p.mesh.position.lerpVectors(p.start, p.end, p.progress);
-            } else {
-                p.mesh.visible = false;
-            }
-        });
-    };
+  tankWater.position.y = 4.45 + Math.sin(performance.now() * 0.002) * 0.02 * state.flow;
+  poolInner.position.y = 0.45 + Math.sin(performance.now() * 0.0025) * 0.015 * state.flow;
 
-    updateParticles(particles1);
-    updateParticles(particles2);
-
-    const updateElec = (elecList) => {
-        elecList.forEach(p => {
-            if (currentFlow > 0.1) {
-                p.mesh.visible = true;
-                p.progress += delta * currentFlow * 2.5;
-                if (p.progress > 1) p.progress = 0;
-
-                const pos = p.curve.getPoint(p.progress);
-                p.mesh.position.copy(pos);
-            } else {
-                p.mesh.visible = false;
-            }
-        });
-    };
-
-    updateElec(elecList1);
-    updateElec(elecList2);
-
-    // Glowing Filament & High Wattage Light Emission
-    matFilament.emissive.setHex(0xfacc15);
-    matFilament.emissiveIntensity = currentFlow * 8.0;
-    bulbLight.intensity = currentFlow * 28;
-
-    controls.update();
-    renderer.render(scene, camera);
+  controls.update();
+  renderer.render(scene, camera);
 }
-
 animate();
 
-window.addEventListener("resize", () => {
-    adjustCameraPosition();
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-
-    renderer.setSize(window.innerWidth, window.innerHeight);
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+camera.position.set(10.5, 8, 14);
+setTimeout(() => {
+  camera.position.set(9.5, 7.5, 13.5);
+  controls.target.set(0, 1.9, 0);
+}, 100);
 </script>
 </body>
 </html>
