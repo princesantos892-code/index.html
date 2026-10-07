@@ -136,7 +136,6 @@
         margin-top: 2px;
     }
 
-    /* Process Flow Indicator */
     .process-step {
         font-size: 0.72rem;
         text-align: center;
@@ -165,29 +164,38 @@
         white-space: nowrap;
     }
 
-    /* Mobile Adaptations */
+    /* Optimized Mobile Viewport (CP POV) */
     @media (max-width: 600px) {
         .ui-container {
-            flex-direction: column;
-            gap: 10px;
+            justify-content: center;
             top: 12px;
             left: 12px;
             right: 12px;
         }
 
-        .header-card, .control-card {
-            max-width: 100%;
-            width: 100%;
+        /* Hide bulky overlays on mobile */
+        .header-card, 
+        .process-step, 
+        .metrics-grid {
+            display: none !important;
         }
 
         .control-card {
-            order: 2;
+            width: 100%;
+            max-width: 280px;
+            padding: 8px;
+            background: rgba(15, 23, 42, 0.6);
+        }
+
+        .power-btn {
+            padding: 10px;
+            font-size: 0.85rem;
         }
 
         .instructions {
-            bottom: 12px;
-            font-size: 0.68rem;
-            padding: 6px 12px;
+            bottom: 10px;
+            font-size: 0.65rem;
+            padding: 5px 10px;
         }
     }
 </style>
@@ -250,12 +258,15 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0b0f17);
 scene.fog = new THREE.FogExp2(0x0b0f17, 0.02);
 
-// Camera Setup
+// Camera Setup with CP POV adjustments
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+
 function adjustCameraPosition() {
     if (window.innerWidth < 600) {
-        camera.position.set(16, 12, 18);
+        // Mobile View: Framed back further so the whole model fits on phone screen
+        camera.position.set(22, 14, 22);
     } else {
+        // PC View
         camera.position.set(12, 9, 14);
     }
 }
@@ -275,10 +286,10 @@ container.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
-controls.target.set(0, 1.5, 0);
+controls.target.set(0, 1.2, 0);
 controls.maxPolarAngle = Math.PI / 2 - 0.01;
 controls.minDistance = 6;
-controls.maxDistance = 30;
+controls.maxDistance = 40;
 
 // Lighting
 scene.add(new THREE.AmbientLight(0xdff0ff, 0.7));
@@ -411,7 +422,6 @@ bulbGroup.add(bulbFilament);
 scene.add(bulbGroup);
 
 // --- VISUAL FLOW PARTICLES ---
-// 1. Water Flow Particles
 const waterParticleCount = 60;
 const waterGeo = new THREE.SphereGeometry(0.08, 8, 8);
 const waterMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.8 });
@@ -427,7 +437,6 @@ for (let i = 0; i < waterParticleCount; i++) {
     });
 }
 
-// 2. Electricity Particles
 const elecParticleCount = 20;
 const elecGeo = new THREE.SphereGeometry(0.06, 8, 8);
 const elecMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
@@ -443,7 +452,6 @@ for (let i = 0; i < elecParticleCount; i++) {
     });
 }
 
-// Pipe path coordinates for water particle interpolation
 const pStart = new THREE.Vector3(-3.2, 3.5, 0);
 const pEnd = new THREE.Vector3(0.3, 0.7, 0);
 
@@ -478,21 +486,20 @@ function animate() {
     const targetFlow = isRunning ? 1 : 0;
     currentFlow += (targetFlow - currentFlow) * delta * 2.5;
 
-    // Update Status Description
-    if (currentFlow < 0.1) {
-        processText.textContent = "Status: Valve Closed";
-    } else if (currentFlow < 0.6) {
-        processText.textContent = "Status: Water Flowing to Turbine...";
-    } else {
-        processText.textContent = "Status: Generating Electricity";
+    if (processText) {
+        if (currentFlow < 0.1) {
+            processText.textContent = "Status: Valve Closed";
+        } else if (currentFlow < 0.6) {
+            processText.textContent = "Status: Water Flowing to Turbine...";
+        } else {
+            processText.textContent = "Status: Generating Electricity";
+        }
     }
 
-    // Dynamic Rotation
     const rotationSpeed = currentFlow * 12;
     runnerGroup.rotation.y += rotationSpeed * delta;
     shaft.rotation.y += rotationSpeed * delta;
 
-    // Animate Water Particles inside Penstock
     waterParticles.forEach(p => {
         if (currentFlow > 0.05) {
             p.mesh.visible = true;
@@ -500,14 +507,12 @@ function animate() {
             if (p.progress > 1) p.progress = 0;
 
             p.mesh.position.lerpVectors(pStart, pEnd, p.progress);
-            // Slight random offset for realistic fluid movement
             p.mesh.position.z = (Math.sin(p.progress * 20) * 0.1);
         } else {
             p.mesh.visible = false;
         }
     });
 
-    // Animate Electrical Particles along Cable
     elecParticles.forEach(p => {
         if (currentFlow > 0.3) {
             p.mesh.visible = true;
@@ -521,12 +526,10 @@ function animate() {
         }
     });
 
-    // Metrics Display Calculation
-    valFlow.textContent = `${Math.round(currentFlow * 450)} L/s`;
-    valRpm.textContent = `${Math.round(currentFlow * 720)} RPM`;
-    valPower.textContent = `${(currentFlow * 2.4).toFixed(1)} kW`;
+    if (valFlow) valFlow.textContent = `${Math.round(currentFlow * 450)} L/s`;
+    if (valRpm) valRpm.textContent = `${Math.round(currentFlow * 720)} RPM`;
+    if (valPower) valPower.textContent = `${(currentFlow * 2.4).toFixed(1)} kW`;
 
-    // Dynamic Bulb Light Effects
     matFilament.emissive.setHex(0xfacc15);
     matFilament.emissiveIntensity = currentFlow * 4.0;
     bulbLight.intensity = currentFlow * 12;
@@ -537,7 +540,6 @@ function animate() {
 
 animate();
 
-// --- RESPONSIVE RESIZE HANDLING ---
 window.addEventListener("resize", () => {
     adjustCameraPosition();
     camera.aspect = window.innerWidth / window.innerHeight;
