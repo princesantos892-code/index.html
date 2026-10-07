@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Hydroelectric Power Plant Simulation</title>
+<style>
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+    }
+
+    body, html {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #0d1117;
+        color: #f0f6fc;
+    }
+
+    #scene-container {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    /* UI Overlay Container */
+    .ui-container {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        right: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        pointer-events: none;
+        z-index: 10;
+    }
+
+    .ui-card {
+        background: rgba(22, 27, 34, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+        pointer-events: auto;
+    }
+
+    .header-card h1 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #58a6ff;
+    }
+
+    .header-card p {
+        font-size: 0.75rem;
+        color: #8b949e;
+        margin-top: 2px;
+    }
+
+    /* Controls Panel */
+    .control-card {
+        width: 220px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .power-btn {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        cursor: pointer;
+        color: #ffffff;
+        background: #da3633;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 12px rgba(218, 54, 51, 0.3);
+    }
+
+    .power-btn.active {
+        background: #238636;
+        box-shadow: 0 4px 12px rgba(35, 134, 54, 0.4);
+    }
+
+    .power-btn:active {
+        transform: scale(0.97);
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .metric-box {
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 6px;
+        padding: 8px;
+        text-align: center;
+    }
+
+    .metric-label {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        color: #8b949e;
+        letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #f0f6fc;
+        margin-top: 2px;
+    }
+
+    /* Helper Instruction Overlay */
+    .instructions {
+        position: absolute;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(22, 27, 34, 0.75);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 8px 16px;
+        font-size: 0.75rem;
+        color: #8b949e;
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
+    /* Mobile Adaptations */
+    @media (max-width: 600px) {
+        .ui-container {
+            flex-direction: column;
+            gap: 10px;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+        }
+
+        .header-card, .control-card {
+            width: 100%;
+        }
+
+        .control-card {
+            order: 2;
+        }
+
+        .instructions {
+            bottom: 12px;
+            font-size: 0.68rem;
+            padding: 6px 12px;
+        }
+    }
+</style>
+</head>
+<body>
+
+<div id="scene-container"></div>
+
+<div class="ui-container">
+    <div class="ui-card header-card">
+        <h1>Hydroelectric Generator</h1>
+        <p>Interactive 3D Flow Simulation</p>
+    </div>
+
+    <div class="ui-card control-card">
+        <button id="powerBtn" class="power-btn">OPEN VALVE</button>
+        <div class="metrics-grid">
+            <div class="metric-box">
+                <div class="metric-label">Water Flow</div>
+                <div class="metric-value" id="valFlow">0 L/s</div>
+            </div>
+            <div class="metric-box">
+                <div class="metric-label">Turbine</div>
+                <div class="metric-value" id="valRpm">0 RPM</div>
+            </div>
+            <div class="metric-box" style="grid-column: span 2;">
+                <div class="metric-label">Power Generated</div>
+                <div class="metric-value" id="valPower" style="color: #58a6ff;">0 kW</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="instructions">
+    Drag to rotate • Pinch/Scroll to zoom • Two-finger drag to pan
+</div>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+    }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+// Scene Setup
+const container = document.getElementById("scene-container");
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0e141b);
+scene.fog = new THREE.FogExp2(0x0e141b, 0.025);
+
+// Camera
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+function adjustCameraPosition() {
+    if (window.innerWidth < 600) {
+        camera.position.set(16, 12, 18);
+    } else {
+        camera.position.set(12, 9, 14);
+    }
+}
+adjustCameraPosition();
+
+// Renderer
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+container.appendChild(renderer.domElement);
+
+// Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.target.set(0, 1.5, 0);
+controls.maxPolarAngle = Math.PI / 2 - 0.01;
+controls.minDistance = 6;
+controls.maxDistance = 30;
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xdff0ff, 0.8);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 2.2);
+dirLight.position.set(10, 20, 12);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.camera.near = 0.5;
+dirLight.shadow.camera.far = 40;
+dirLight.shadow.camera.left = -12;
+dirLight.shadow.camera.right = 12;
+dirLight.shadow.camera.top = 12;
+dirLight.shadow.camera.bottom = -12;
+scene.add(dirLight);
+
+const pointLight = new THREE.PointLight(0x38bdf8, 0, 8);
+pointLight.position.set(4.5, 3.2, 0);
+scene.add(pointLight);
+
+// Materials
+const matConcrete = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.8 });
+const matDarkMetal = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 });
+const matSteel = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
+const matGenerator = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.5, roughness: 0.3 });
+const matWater = new THREE.MeshPhysicalMaterial({
+    color: 0x0284c7,
+    transmission: 0.8,
+    opacity: 1,
+    transparent: true,
+    roughness: 0.1,
+    ior: 1.333
+});
+const matGlass = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    transmission: 0.9,
+    opacity: 1,
+    transparent: true,
+    roughness: 0.05
+});
+const matFilament = new THREE.MeshStandardMaterial({
+    color: 0x333333,
+    emissive: 0x000000,
+    emissiveIntensity: 0
+});
+
+// Ground Plate
+const ground = new THREE.Mesh(
+    new THREE.CylinderGeometry(14, 14, 0.4, 64),
+    new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 })
+);
+ground.position.y = -0.2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// --- 1. DAM / RESERVOIR ---
+const damGroup = new THREE.Group();
+
+// Main Structure
+const damWall = new THREE.Mesh(new THREE.BoxGeometry(3.5, 5, 4), matConcrete);
+damWall.position.set(-5, 2.5, 0);
+damWall.castShadow = true;
+damWall.receiveShadow = true;
+damGroup.add(damWall);
+
+// Reservoir Water Layer
+const resWater = new THREE.Mesh(new THREE.BoxGeometry(3.4, 4.2, 3.8), matWater);
+resWater.position.set(-5, 2.2, 0);
+damGroup.add(resWater);
+
+scene.add(damGroup);
+
+// --- 2. PENSTOCK (PIPE) ---
+const penstockGroup = new THREE.Group();
+const pipeOuter = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 4.2, 32, 1, true), matDarkMetal);
+pipeOuter.rotation.z = -Math.PI / 4;
+pipeOuter.position.set(-1.8, 2.1, 0);
+pipeOuter.castShadow = true;
+penstockGroup.add(pipeOuter);
+
+// Internal Water Column inside Penstock
+const pipeWater = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 4.1, 32), matWater);
+pipeWater.rotation.z = -Math.PI / 4;
+pipeWater.position.set(-1.8, 2.1, 0);
+pipeWater.scale.set(1, 0.001, 1); // Dynamic scaling for flow simulation
+penstockGroup.add(pipeWater);
+
+scene.add(penstockGroup);
+
+// --- 3. TURBINE HOUSING & RUNNER ---
+const turbineHousing = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 1.2, 32), matDarkMetal);
+turbineHousing.position.set(0.3, 0.6, 0);
+turbineHousing.castShadow = true;
+scene.add(turbineHousing);
+
+const runnerGroup = new THREE.Group();
+runnerGroup.position.set(0.3, 0.6, 0);
+
+const runnerHub = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.9, 16), matSteel);
+runnerGroup.add(runnerHub);
+
+const bladeCount = 6;
+for (let i = 0; i < bladeCount; i++) {
+    const angle = (i / bladeCount) * Math.PI * 2;
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.25), matSteel);
+    blade.position.set(Math.sin(angle) * 0.45, 0, Math.cos(angle) * 0.45);
+    blade.rotation.y = angle + Math.PI / 4;
+    runnerGroup.add(blade);
+}
+scene.add(runnerGroup);
+
+// --- 4. DRIVE SHAFT & GENERATOR ---
+const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.8, 16), matSteel);
+shaft.position.set(0.3, 1.8, 0);
+scene.add(shaft);
+
+const genBase = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 2), matDarkMetal);
+genBase.position.set(0.3, 2.7, 0);
+scene.add(genBase);
+
+const generator = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 1.2, 32), matGenerator);
+generator.position.set(0.3, 3.5, 0);
+generator.castShadow = true;
+scene.add(generator);
+
+// --- 5. POWER LINES & LIGHT BULB ---
+const cableCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.3, 4.0, 0),
+    new THREE.Vector3(2.0, 4.2, 0),
+    new THREE.Vector3(4.5, 3.8, 0)
+]);
+const cableGeo = new THREE.TubeGeometry(cableCurve, 20, 0.04, 8, false);
+const cable = new THREE.Mesh(cableGeo, matDarkMetal);
+scene.add(cable);
+
+const bulbGroup = new THREE.Group();
+bulbGroup.position.set(4.5, 3.0, 0);
+
+const bulbBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.3, 16), matSteel);
+bulbBase.position.y = 0.5;
+bulbGroup.add(bulbBase);
+
+const bulbGlass = new THREE.Mesh(new THREE.SphereGeometry(0.45, 32, 32), matGlass);
+bulbGlass.position.y = 0.1;
+bulbGroup.add(bulbGlass);
+
+const bulbFilament = new THREE.Mesh(new THREE.SphereGeometry(0.15, 16, 16), matFilament);
+bulbFilament.position.y = 0.1;
+bulbGroup.add(bulbFilament);
+
+scene.add(bulbGroup);
+
+// --- STATE MANAGEMENT & INTERACTION ---
+let isRunning = false;
+let currentFlow = 0; // Smooth transition factor (0 to 1)
+
+const powerBtn = document.getElementById("powerBtn");
+const valFlow = document.getElementById("valFlow");
+const valRpm = document.getElementById("valRpm");
+const valPower = document.getElementById("valPower");
+
+powerBtn.addEventListener("click", () => {
+    isRunning = !isRunning;
+    if (isRunning) {
+        powerBtn.textContent = "CLOSE VALVE";
+        powerBtn.classList.add("active");
+    } else {
+        powerBtn.textContent = "OPEN VALVE";
+        powerBtn.classList.remove("active");
+    }
+});
+
+// --- ANIMATION LOOP ---
+const clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+
+    const delta = clock.getDelta();
+
+    // Smooth state interpolation
+    const targetFlow = isRunning ? 1 : 0;
+    currentFlow += (targetFlow - currentFlow) * delta * 3;
+
+    // Update Water Column
+    pipeWater.scale.y = Math.max(0.001, currentFlow);
+
+    // Dynamic Rotating Elements
+    const rotationSpeed = currentFlow * 12;
+    runnerGroup.rotation.y += rotationSpeed * delta;
+    shaft.rotation.y += rotationSpeed * delta;
+
+    // Metrics Display Calculation
+    const flowRate = Math.round(currentFlow * 450);
+    const rpm = Math.round(currentFlow * 720);
+    const power = (currentFlow * 2.4).toFixed(1);
+
+    valFlow.textContent = `${flowRate} L/s`;
+    valRpm.textContent = `${rpm} RPM`;
+    valPower.textContent = `${power} kW`;
+
+    // Dynamic Bulb & Light Effects
+    matFilament.emissive.setHex(0xffaa00);
+    matFilament.emissiveIntensity = currentFlow * 3.5;
+    pointLight.intensity = currentFlow * 15;
+
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+animate();
+
+// --- RESPONSIVE RESIZE HANDLING ---
+window.addEventListener("resize", () => {
+    adjustCameraPosition();
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+</body>
+</html>
